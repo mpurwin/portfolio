@@ -6,7 +6,7 @@
 <title>About — Maxwell Purwin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Rye&display=swap" rel="stylesheet">
 <style>
 @font-face {
   font-family: 'Simpel';
@@ -254,31 +254,6 @@ nav {
   border-top: 1px solid var(--gray-200);
   border-bottom: 1px solid var(--gray-200);
 }
-.embed-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  color: var(--gray-400);
-}
-.embed-placeholder-icon {
-  width: 48px;
-  height: 48px;
-  border: 1.5px solid var(--gray-200);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-.embed-placeholder-text {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--gray-400);
-}
 .embed-container iframe {
   width: 100%;
   height: 100%;
@@ -359,14 +334,10 @@ footer {
       <span>by craft.</span>
     </h1>
     <div class="hero-bottom">
-      <p class="hero-bio">
-        Multidisciplinary creative directing visual identity across
-        motion, graphic design, and social content. University of Michigan
-        alum. Private pilot. Fujifilm shooter.
-      </p>
+      <p class="hero-bio">Learn more about me below.</p>
       <div class="hero-actions">
         <a href="https://www.linkedin.com/in/maxwellpurwin/" target="_blank" class="btn btn-primary">LinkedIn ↗</a>
-        <a href="mailto:mpurwin@umich.edu" class="btn btn-ghost">Email me</a>
+        <a href="#experience" class="btn btn-ghost">Visit <span style="font-family:'Rye',serif;">PURWIN RANCH</span></a>
       </div>
     </div>
   </div>
@@ -377,7 +348,7 @@ footer {
   <div class="about-top">
     <div class="reveal">
       <p class="about-label">About</p>
-      <h2 class="about-headline">Creative<br>by <em>craft.</em></h2>
+      <h2 class="about-headline">Hi, I'm Max!</h2>
       <p class="about-text">
         Creative Manager at Virgin Voyages, directing an internal team and overseeing
         visual identity across paid and organic social. My work bridges graphic design,
@@ -401,12 +372,12 @@ footer {
 </section>
 
 <!-- ── Embed Section ── -->
-<section class="embed-section">
+<section class="embed-section" id="experience">
   <div class="embed-header reveal">
     <span class="embed-label">Experience Purwin Ranch</span>
   </div>
   <div class="embed-container reveal">
-    <iframe src="purwin-ranch-3d.html" allowfullscreen style="width:100%;height:100%;border:none;display:block;"></iframe>
+    <iframe src="purwin-ranch-3d.html" allowfullscreen></iframe>
   </div>
 </section>
 
