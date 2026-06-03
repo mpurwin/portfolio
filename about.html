@@ -448,6 +448,12 @@ function draw() {
   time++; requestAnimationFrame(draw);
 }
 
+// Prevent page scroll when mouse is over the experience iframe
+const embedEl = document.querySelector('.embed-container');
+embedEl.addEventListener('wheel', (e) => {
+  e.stopPropagation();
+}, { passive: false });
+
 init(); draw();
 window.addEventListener('resize', () => { resize(); });
 
