@@ -135,6 +135,16 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 .pnav-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.08;transition:opacity .4s}.pnav-item:hover .pnav-bg{opacity:0.18}
 .pnav-bg-um{background-image:url('images/University Motors GIF Website 2.gif')}
 .pnav-bg-dlm{background-image:url('images/DLM HEADER_1.gif')}
+
+/* Click-to-play */
+.ep-item{position:relative;width:100%;height:100%;cursor:pointer;}
+.ep-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s cubic-bezier(0.25,0.46,0.45,0.94);}
+.ep-item:hover img{transform:scale(1.04);}
+.ep-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.ep-play-btn{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+.ep-item:hover .ep-play-btn{transform:scale(1.1);background:#fff;}
+.ep-play-btn svg{width:20px;height:20px;margin-left:3px;}
+.ep-item iframe{position:absolute;inset:0;width:100%;height:100%;border:none;display:block;}
 </style>
 </head>
 <body>
@@ -164,11 +174,7 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
   </div>
 </section>
 
-
-
 <div class="feature reveal" style="flex-direction:column;display:flex">
-
-  <!-- Overview -->
   <div class="feature-text" style="display:grid;grid-template-columns:1fr 1fr;gap:48px;padding:56px;border-bottom:1px solid var(--gray-200)">
     <div>
       <p class="feature-label">The Work</p>
@@ -183,7 +189,7 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center">
       <p style="font-size:15px;font-weight:300;color:var(--gray-600);line-height:1.8;max-width:720px;margin-bottom:32px;">I had the honor of crafting a logo for Comstock Park Body Shop's 60th anniversary. The challenge was to encapsulate six decades of history and legacy into a compelling design. The final logo was placed on a banner at the front of their building and was featured on custom t-shirts worn by every employee.</p>
       <div style="display:flex;justify-content:center">
-        <img src="images/CPBS 60th Logo_V02-01.png" alt="CPBS 60th Anniversary Logo" style="width:100%;max-width:420px;display:block;">
+        <img src="images/CPBS 60th Logo_V02-01.png" alt="CPBS 60th Anniversary Logo" style="width:100%;max-width:420px;display:block;border-radius:12px;">
       </div>
     </div>
   </div>
@@ -203,8 +209,11 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
   <div style="padding:56px">
     <p class="feature-label" style="margin-bottom:12px;">Disinfectant Informational Video</p>
     <p style="font-size:15px;font-weight:300;color:var(--gray-600);line-height:1.8;max-width:720px;margin-bottom:32px;">I created an informative video shedding light on Comstock Park Body Shop's effective use of Transform Disinfectant to sanitize cars post-repair. This visual guide enhances safety protocols, providing valuable insights for both customers and the dedicated team.</p>
-    <div style="width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden">
-      <iframe width="100%" height="100%" src="https://www.youtube.com/embed/f6oTGqq8fEI?si=4s0SbrCdwmQEfCBO" title="Comstock Park Body Shop" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="display:block"></iframe>
+    <div style="width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative">
+      <div class="ep-item" data-vid="f6oTGqq8fEI" style="position:absolute;inset:0;border-radius:0;">
+        <img src="https://img.youtube.com/vi/f6oTGqq8fEI/maxresdefault.jpg" alt="Disinfectant Video" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <div class="ep-play"><div class="ep-play-btn"><svg viewBox="0 0 24 24" fill="var(--black)"><path d="M8 5v14l11-7z"/></svg></div></div>
+      </div>
     </div>
   </div>
 
@@ -242,6 +251,47 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 <script>
 const obs=new IntersectionObserver(entries=>{entries.forEach((e,i)=>{if(e.isIntersecting)setTimeout(()=>e.target.classList.add('visible'),i*80)});},{threshold:0.06});
 document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+function animateCount(el) {
+  const target = parseInt(el.dataset.count, 10);
+  const suffix = el.dataset.suffix || '';
+  const duration = 1400;
+  const startTime = performance.now();
+  function ease(t) { return 1 - Math.pow(1 - t, 3); }
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = Math.round(ease(progress) * target);
+    el.textContent = current + suffix;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+const statObs = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const countEl = entry.target.querySelector('[data-count]');
+      if (countEl) animateCount(countEl);
+      statObs.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.stat').forEach(el => statObs.observe(el));
+
+document.querySelectorAll('.ep-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const vid = item.dataset.vid;
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube.com/embed/${vid}?autoplay=1`;
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    iframe.allowFullscreen = true;
+    item.innerHTML = '';
+    item.appendChild(iframe);
+    item.style.cursor = 'default';
+  });
+});
 </script>
 </body>
 </html>

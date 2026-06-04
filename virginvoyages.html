@@ -168,22 +168,21 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
   display:flex;
   align-items:center;
   justify-content:center;
-  height:420px;
+  height:540px;
   position:relative;
-  overflow:hidden;
   cursor:grab;
 }
 .vv-carousel-item{
   position:absolute;
-  border-radius:12px;
+  border-radius:16px;
   overflow:hidden;
   cursor:pointer;
   background:var(--gray-100);
-  /* no CSS transitions — JS drives everything via rAF */
   will-change:transform,opacity,width,height;
+  transform-origin: center bottom;
 }
 .vv-carousel-item img{
-  width:100%;height:100%;object-fit:cover;display:block;
+  width:100%;height:100%;object-fit:contain;display:block;
   pointer-events:none;
 }
 
@@ -224,7 +223,7 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 }
 
 @media(max-width:768px){
-  .vv-carousel-track{ height:300px; }
+  .vv-carousel-track{ height:360px; }
   .vv-carousel-prev{ left:-8px; }
   .vv-carousel-next{ right:-8px; }
 }
@@ -236,7 +235,7 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 @media(max-width:768px){.vv-posts-wrap{grid-template-columns:repeat(2,1fr)}.vv-stories-wrap{grid-template-columns:repeat(2,1fr)}}
 
 /* stories carousel — taller 9:16 slots */
-.vv-stories-track{ height:520px; }
+.vv-stories-track{ height:600px; }
 .vv-story-item{
   position:absolute;
   border-radius:12px;
@@ -364,7 +363,7 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
   <!-- STORIES -->
   <div class="vv-section" style="padding:56px;border-bottom:1px solid var(--gray-200)">
     <p class="feature-label" style="margin-bottom:12px;">Stories</p>
-    <p style="font-size:13px;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;margin-bottom:32px">Facebook &middot; Instagram</p>
+    <p style="font-size:13px;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;margin-bottom:32px">Facebook &middot; Instagram &middot; TikTok</p>
 
     <div class="vv-carousel" id="vv-stories-carousel">
       <button class="vv-carousel-btn vv-carousel-prev" id="vv-stories-prev" aria-label="Previous">&#8592;</button>
@@ -551,169 +550,302 @@ document.addEventListener('keydown', e => {
 <script>
 // ── Reusable focus carousel factory ───────────────────────────────
 function makeCarousel(opts) {
-  const { itemSelector, trackId, prevId, nextId, dotsId, slots, speed } = opts;
+  const { itemSelector, trackId, prevId, nextId, dotsId, slots, speed, shadow=true, adaptiveHeight=false } = opts;
 
   const items  = Array.from(document.querySelectorAll(itemSelector));
   const dotsEl = document.getElementById(dotsId);
   const track  = document.getElementById(trackId);
   const total  = items.length;
 
-  let pos=0, target=0, paused=false, lastT=null;
-  const EASE=0.10, DRAG_SCALE=1/260;
+  // pos is always 0..total (normalized). delta is the signed lerp target.
+  let pos    = 0;   // normalized 0..total
+  let delta  = 0;   // how far we still need to move (signed, in slot units)
+  let moving = false;
+  let lastT  = null;
+  const EASE = 0.10;
+  const DRAG_SCALE = 1 / 260;
   let dragging=false, dragStartX=0, dragStartPos=0, dragVel=0, lastDragX=0, didDrag=false;
+
+  function mod(n, m) { return ((n % m) + m) % m; }
 
   // dots
   items.forEach((_,i) => {
     const d = document.createElement('button');
     d.className = 'vv-carousel-dot';
     d.setAttribute('aria-label','Go to slide '+(i+1));
-    d.addEventListener('click', () => { pause(); snapTo(i); });
+    d.addEventListener('click', () => { stopAutoplay(); moveTo(i); });
     dotsEl.appendChild(d);
   });
 
   function updateDots() {
-    const idx = ((Math.round(pos)%total)+total)%total;
+    const idx = Math.round(mod(pos, total)) % total;
     dotsEl.querySelectorAll('.vv-carousel-dot').forEach((d,i) => d.classList.toggle('active', i===idx));
   }
 
   function lerp(a,b,t){ return a+(b-a)*t; }
 
   function slotFor(offset) {
-    if (Math.abs(offset)>=2.5) return null;
-    const si=offset+2, lo=Math.floor(si), hi=Math.ceil(si);
-    if (lo===hi) return slots[lo];
-    const t=si-lo;
-    const A=slots[Math.max(0,Math.min(slots.length-1,lo))];
-    const B=slots[Math.max(0,Math.min(slots.length-1,hi))];
-    if (!A||!B) return null;
-    return {x:lerp(A.x,B.x,t),w:lerp(A.w,B.w,t),h:lerp(A.h,B.h,t),op:lerp(A.op,B.op,t),z:Math.round(lerp(A.z,B.z,t))};
+    const OFFSCREEN = 5.0;
+    if (Math.abs(offset) > OFFSCREEN) return null;
+    const si = Math.max(0, Math.min(slots.length-1, offset + 2));
+    const lo = Math.floor(si), hi = Math.ceil(si);
+    const A = slots[Math.max(0, Math.min(slots.length-1, lo))];
+    const B = slots[Math.max(0, Math.min(slots.length-1, hi))];
+    const t = (lo === hi) ? 0 : si - lo;
+    const xPerSlot = (slots[slots.length-1].x - slots[0].x) / (slots.length - 1);
+    let x = lerp(A.x, B.x, t);
+    const halfLen = (slots.length - 1) / 2;
+    if (offset < -halfLen) x = slots[0].x + (offset + halfLen) * xPerSlot;
+    if (offset >  halfLen) x = slots[slots.length-1].x + (offset - halfLen) * xPerSlot;
+    return {
+      x,
+      w:   lerp(A.w,   B.w,   t),
+      h:   lerp(A.h,   B.h,   t),
+      op:  lerp(A.op,  B.op,  t),
+      // z purely from offset — never interpolated so there's no mid-transition jump
+      // Left side (negative offset): higher z so they layer over the right
+      // Right side (positive offset): lower z so they slide under
+      z:   offset <= 0 ? Math.round(4 + offset) : Math.round(4 - offset - 1),
+      rot: lerp(A.rot||0, B.rot||0, t),
+      y:   lerp(A.y||0,   B.y||0,   t),
+    };
   }
 
   function render() {
-    items.forEach((item,i) => {
-      let offset=i-pos;
-      while(offset>total/2) offset-=total;
-      while(offset<-total/2) offset+=total;
-      const slot=slotFor(offset);
-      if (!slot||Math.abs(offset)>2.6) {
+    items.forEach((item, i) => {
+      // Compute shortest-path offset from normalized pos
+      let offset = mod(i - pos, total);
+      if (offset > total / 2) offset -= total;
+
+      const slot = slotFor(offset);
+      if (!slot) {
         item.style.opacity='0'; item.style.pointerEvents='none'; item.style.zIndex='0'; return;
       }
-      item.style.opacity=slot.op; item.style.zIndex=slot.z;
-      item.style.width=slot.w+'px'; item.style.height=slot.h+'px';
-      item.style.transform=`translateX(${slot.x}px) translateY(-50%)`;
-      item.style.top='50%'; item.style.left='50%'; item.style.marginLeft=(-slot.w/2)+'px';
-      item.style.pointerEvents=Math.abs(offset)<2.5?'auto':'none';
-      item.style.cursor=Math.abs(offset)<0.3?'zoom-in':'pointer';
-      item.style.boxShadow=`0 ${lerp(0,24,Math.max(0,1-Math.abs(offset)))}px ${lerp(0,64,Math.max(0,1-Math.abs(offset)))}px rgba(0,0,0,${(lerp(0,0.18,Math.max(0,1-Math.abs(offset)))).toFixed(3)})`;
+
+      let w = slot.w, h = slot.h;
+      if (adaptiveHeight) {
+        const img = item.querySelector('img');
+        if (img && img.naturalWidth && img.naturalHeight) {
+          h = Math.round(w * img.naturalHeight / img.naturalWidth);
+        }
+      }
+
+      item.style.opacity       = slot.op;
+      item.style.zIndex        = slot.z;
+      item.style.width         = w+'px';
+      item.style.height        = h+'px';
+      item.style.top           = '50%';
+      item.style.left          = '50%';
+      item.style.marginLeft    = (-w/2)+'px';
+      item.style.transform     = `translateX(${slot.x}px) translateY(calc(-50% + ${slot.y||0}px)) rotate(${slot.rot||0}deg)`;
+      item.style.pointerEvents = Math.abs(offset) < 2.4 ? 'auto' : 'none';
+      item.style.cursor        = Math.abs(offset) < 0.4 ? 'zoom-in' : 'pointer';
+
+      if (shadow) {
+        const s = Math.max(0, 1 - Math.abs(offset));
+        item.style.boxShadow = `0 ${lerp(0,32,s).toFixed(1)}px ${lerp(0,80,s).toFixed(1)}px rgba(0,0,0,${lerp(0,0.22,s).toFixed(3)})`;
+      } else {
+        item.style.boxShadow = 'none';
+      }
     });
     updateDots();
   }
 
-  function tick(ts) {
-    if (lastT===null) lastT=ts;
-    const dt=Math.min((ts-lastT)/1000,0.1); lastT=ts;
-    if (!paused) { pos+=speed*dt; }
-    else { pos=lerp(pos,target,EASE); if(Math.abs(pos-target)<0.001) pos=target; }
-    render();
-    requestAnimationFrame(tick);
+  // Autoplay: continuous drift
+  let autoplay = null;
+  function startAutoplay() {
+    if (autoplay) return;
+    let lastAT = null;
+    function ap(ts) {
+      if (!autoplay) return;
+      if (lastAT !== null) {
+        pos = mod(pos + speed * Math.min((ts - lastAT) / 1000, 0.05), total);
+        render();
+      }
+      lastAT = ts;
+      autoplay = requestAnimationFrame(ap);
+    }
+    autoplay = requestAnimationFrame(ap);
+  }
+  function stopAutoplay() {
+    if (autoplay) { cancelAnimationFrame(autoplay); autoplay = null; }
   }
 
-  function pause() { if(paused) return; paused=true; target=Math.round(pos); }
+  // Snap animation: lerp pos toward a target over multiple frames
+  let snapRAF = null;
+  function moveTo(idx) {
+    stopAutoplay();
+    if (snapRAF) { cancelAnimationFrame(snapRAF); snapRAF = null; }
 
-  function snapTo(idx) {
-    let best=idx;
-    for (let k=-1;k<=1;k++) { const c=idx+k*total; if(Math.abs(c-pos)<Math.abs(best-pos)) best=c; }
-    target=best;
+    // Find shortest-path direction to idx from current pos
+    const cur = mod(pos, total);
+    let diff = mod(idx - cur, total);
+    if (diff > total / 2) diff -= total; // negative = go backwards
+
+    const targetPos = cur + diff;
+    let p = pos; // use a local to avoid touching pos until we're sure
+
+    function snap() {
+      const remaining = targetPos - mod(p - (p - cur), total) - cur;
+      // lerp the remaining distance
+      p = mod(p + (targetPos - p) * EASE, total);
+      // Also keep a running normalized pos
+      pos = mod(pos + (targetPos - pos) * EASE, total);
+      render();
+      if (Math.abs(targetPos - pos) > 0.001 && Math.abs(mod(targetPos,total) - mod(pos,total)) > 0.001) {
+        snapRAF = requestAnimationFrame(snap);
+      } else {
+        pos = mod(targetPos, total);
+        render();
+        snapRAF = null;
+      }
+    }
+    snapRAF = requestAnimationFrame(snap);
   }
 
-  function step(dir) { pause(); target=Math.round(pos)+dir; }
+  // Simpler moveTo that just lerps pos in normalized space
+  function moveBy(dir) {
+    stopAutoplay();
+    if (snapRAF) { cancelAnimationFrame(snapRAF); snapRAF = null; }
 
-  document.getElementById(prevId).addEventListener('click', ()=>step(-1));
-  document.getElementById(nextId).addEventListener('click', ()=>step(+1));
+    const start = pos;
+    const end   = mod(pos + dir, total);
+    // Use shortest path
+    let d = mod(end - start, total);
+    if (d > total / 2) d -= total;
+    const target = start + d;
+
+    function snap() {
+      pos = mod(pos + (target - mod(pos, total) + start - start) * EASE, total);
+      // simpler: just lerp in unbounded space then renormalize
+      render();
+    }
+
+    // Actually the cleanest: lerp an unbounded float, render uses mod
+    let p = 0; // progress 0..1
+    function go(ts) {
+      if (lastT === null) lastT = ts;
+      const dt = Math.min((ts - lastT) / 1000, 0.05);
+      lastT = ts;
+      pos = mod(pos + d * EASE, total);
+      d *= (1 - EASE);
+      render();
+      if (Math.abs(d) > 0.0005) {
+        snapRAF = requestAnimationFrame(go);
+      } else {
+        pos = mod(target, total);
+        render();
+        snapRAF = null;
+        lastT = null;
+      }
+    }
+    lastT = null;
+    snapRAF = requestAnimationFrame(go);
+  }
+
+  document.getElementById(prevId).addEventListener('click', ()=>moveBy(-1));
+  document.getElementById(nextId).addEventListener('click', ()=>moveBy(+1));
 
   items.forEach((item,i) => {
     item.addEventListener('click', () => {
       if (didDrag) return;
-      const centerIdx=((Math.round(pos)%total)+total)%total;
-      if (i===centerIdx) {
-        document.getElementById('vv-lightbox-img').src=item.querySelector('img').src;
+      const centerIdx = Math.round(mod(pos, total)) % total;
+      if (i === centerIdx) {
+        document.getElementById('vv-lightbox-img').src = item.querySelector('img').src;
         document.getElementById('vv-lightbox').classList.add('active');
-      } else { pause(); snapTo(i); }
+      } else {
+        // Find shortest direction
+        let diff = mod(i - mod(pos, total), total);
+        if (diff > total / 2) diff -= total;
+        moveBy(diff);
+      }
     });
   });
 
+  // Drag
   function onDragStart(x) {
+    stopAutoplay();
+    if (snapRAF) { cancelAnimationFrame(snapRAF); snapRAF = null; }
     dragging=true; didDrag=false; dragStartX=x; lastDragX=x;
-    dragStartPos=pos; dragVel=0; paused=true; track.style.cursor='grabbing';
+    dragStartPos=pos; dragVel=0;
+    track.style.cursor='grabbing';
+    lastT = null;
   }
   function onDragMove(x) {
     if (!dragging) return;
-    dragVel=-(x-lastDragX)*DRAG_SCALE; lastDragX=x;
-    if (Math.abs(x-dragStartX)>4) didDrag=true;
-    pos=dragStartPos-(x-dragStartX)*DRAG_SCALE;
+    dragVel   = -(x - lastDragX) * DRAG_SCALE;
+    lastDragX = x;
+    if (Math.abs(x - dragStartX) > 4) didDrag = true;
+    pos = mod(dragStartPos - (x - dragStartX) * DRAG_SCALE, total);
+    render();
   }
   function onDragEnd() {
     if (!dragging) return;
-    dragging=false; track.style.cursor='';
-    target=Math.round(pos+dragVel*6);
+    dragging = false; track.style.cursor = '';
+    // Fling then snap to nearest integer
+    const flung = mod(pos + dragVel * 5, total);
+    let diff = mod(flung - pos, total);
+    if (diff > total / 2) diff -= total;
+    moveBy(diff + Math.round(mod(pos + diff, total)) - mod(pos + diff, total));
   }
 
-  track.addEventListener('mousedown',  e=>{e.preventDefault();onDragStart(e.clientX);});
-  window.addEventListener('mousemove', e=>{if(dragging)onDragMove(e.clientX);});
+  track.addEventListener('mousedown',  e=>{e.preventDefault(); onDragStart(e.clientX);});
+  window.addEventListener('mousemove', e=>{if(dragging) onDragMove(e.clientX);});
   window.addEventListener('mouseup',   ()=>onDragEnd());
   track.addEventListener('touchstart', e=>{onDragStart(e.touches[0].clientX);},{passive:true});
-  track.addEventListener('touchmove',  e=>{if(dragging)onDragMove(e.touches[0].clientX);},{passive:true});
+  track.addEventListener('touchmove',  e=>{if(dragging) onDragMove(e.touches[0].clientX);},{passive:true});
   track.addEventListener('touchend',   ()=>onDragEnd());
 
-  requestAnimationFrame(tick);
-  return { step, pause, snapTo };
+  startAutoplay();
+  render();
+  return { moveBy, moveTo, stopAutoplay };
 }
-
 // ── In-feed posts carousel ────────────────────────────────────────
 const postCarousel = makeCarousel({
   itemSelector: '.vv-carousel-item',
   trackId: 'vv-carousel-track', prevId: 'vv-prev', nextId: 'vv-next', dotsId: 'vv-dots',
-  speed: 0.4,
+  speed: 0.4, shadow: true, adaptiveHeight: true,
   slots: [
-    { x:-480, w:160, h:220, op:0.30, z:1 },
-    { x:-280, w:220, h:300, op:0.60, z:2 },
-    { x:   0, w:300, h:400, op:1.00, z:4 },
-    { x: 280, w:220, h:300, op:0.60, z:3 },
-    { x: 480, w:160, h:220, op:0.30, z:2 },
+    { x:-310, w:180, h:180, op:1.0, z:2, rot:-6,  y: 30 },
+    { x:-190, w:240, h:240, op:1.0, z:3, rot:-3,  y: 14 },
+    { x:   0, w:360, h:360, op:1.0, z:4, rot: 0,  y:  0 },
+    { x: 190, w:240, h:240, op:1.0, z:3, rot: 3,  y: 14 },
+    { x: 310, w:180, h:180, op:1.0, z:2, rot: 6,  y: 30 },
   ],
 });
 
-// ── Stories carousel (tall 9:16 slots) ───────────────────────────
+// ── Stories carousel ──────────────────────────────────────────────
 const storiesCarousel = makeCarousel({
   itemSelector: '.vv-story-item',
   trackId: 'vv-stories-track', prevId: 'vv-stories-prev', nextId: 'vv-stories-next', dotsId: 'vv-stories-dots',
-  speed: 0.35,
+  speed: 0.35, shadow: true,
   slots: [
-    { x:-420, w:130, h:230, op:0.25, z:1 },
-    { x:-240, w:180, h:320, op:0.55, z:2 },
-    { x:   0, w:260, h:460, op:1.00, z:4 },
-    { x: 240, w:180, h:320, op:0.55, z:3 },
-    { x: 420, w:130, h:230, op:0.25, z:2 },
+    { x:-220, w:120, h:214, op:1.0, z:2, rot:-6,  y: 30 },
+    { x:-130, w:165, h:293, op:1.0, z:3, rot:-3,  y: 14 },
+    { x:   0, w:240, h:426, op:1.0, z:4, rot: 0,  y:  0 },
+    { x: 130, w:165, h:293, op:1.0, z:3, rot: 3,  y: 14 },
+    { x: 220, w:120, h:214, op:1.0, z:2, rot: 6,  y: 30 },
   ],
 });
 
-// ── GIF sticker carousel — 5 wide, square, transparent ───────────
+// ── GIF sticker carousel ──────────────────────────────────────────
 const gifCarousel = makeCarousel({
   itemSelector: '.vv-gif-item',
   trackId: 'vv-gifs-track', prevId: 'vv-gifs-prev', nextId: 'vv-gifs-next', dotsId: 'vv-gifs-dots',
-  speed: 0.3,
+  speed: 0.3, shadow: false,
   slots: [
-    { x:-480, w:140, h:140, op:0.25, z:1 },
-    { x:-260, w:170, h:170, op:0.55, z:2 },
-    { x:   0, w:200, h:200, op:1.00, z:4 },
-    { x: 260, w:170, h:170, op:0.55, z:3 },
-    { x: 480, w:140, h:140, op:0.25, z:2 },
+    { x:-440, w:120, h:120, op:1.0, z:2, rot:0, y:0 },
+    { x:-250, w:155, h:155, op:1.0, z:3, rot:0, y:0 },
+    { x:   0, w:200, h:200, op:1.0, z:4, rot:0, y:0 },
+    { x: 250, w:155, h:155, op:1.0, z:3, rot:0, y:0 },
+    { x: 440, w:120, h:120, op:1.0, z:2, rot:0, y:0 },
   ],
 });
+
 document.addEventListener('keydown', e => {
   if (document.getElementById('vv-lightbox').classList.contains('active')) return;
-  if (e.key==='ArrowLeft')  { postCarousel.step(-1); storiesCarousel.step(-1); gifCarousel.step(-1); }
-  if (e.key==='ArrowRight') { postCarousel.step(+1); storiesCarousel.step(+1); gifCarousel.step(+1); }
+  if (e.key==='ArrowLeft')  { postCarousel.moveBy(-1); storiesCarousel.moveBy(-1); gifCarousel.moveBy(-1); }
+  if (e.key==='ArrowRight') { postCarousel.moveBy(+1); storiesCarousel.moveBy(+1); gifCarousel.moveBy(+1); }
 });
 </script>
 </body>
