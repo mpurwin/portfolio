@@ -158,10 +158,76 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 
 
 @media(max-width:768px){}
-.vv-posts-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start;margin-bottom:40px}
-.vv-post-item{overflow:hidden;cursor:zoom-in;background:var(--gray-100);display:block;border-radius:12px}
-.vv-post-item img{width:100%;height:auto;display:block;transition:transform .5s var(--ease)}
-.vv-post-item:hover img{transform:scale(1.04)}
+/* focus carousel */
+.vv-carousel{
+  position:relative;
+  margin-bottom:40px;
+  user-select:none;
+}
+.vv-carousel-track{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:420px;
+  position:relative;
+  overflow:hidden;
+  cursor:grab;
+}
+.vv-carousel-item{
+  position:absolute;
+  border-radius:12px;
+  overflow:hidden;
+  cursor:pointer;
+  background:var(--gray-100);
+  /* no CSS transitions — JS drives everything via rAF */
+  will-change:transform,opacity,width,height;
+}
+.vv-carousel-item img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  pointer-events:none;
+}
+
+/* arrows */
+.vv-carousel-btn{
+  position:absolute;
+  top:50%; transform:translateY(-50%);
+  z-index:10;
+  background:var(--white);
+  border:1px solid var(--gray-200);
+  border-radius:50%;
+  width:44px; height:44px;
+  font-size:18px;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s, box-shadow .15s;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  color:var(--black);
+}
+.vv-carousel-btn:hover{ background:var(--gray-50); box-shadow:0 4px 16px rgba(0,0,0,0.12); }
+.vv-carousel-prev{ left:0; }
+.vv-carousel-next{ right:0; }
+
+/* dots */
+.vv-carousel-dots{
+  display:flex; justify-content:center; align-items:center;
+  gap:6px; margin-top:24px;
+}
+.vv-carousel-dot{
+  width:6px; height:6px; border-radius:50%;
+  background:var(--gray-200);
+  border:none; padding:0; cursor:pointer;
+  transition:background .2s, transform .2s;
+}
+.vv-carousel-dot.active{
+  background:var(--black);
+  transform:scale(1.4);
+}
+
+@media(max-width:768px){
+  .vv-carousel-track{ height:300px; }
+  .vv-carousel-prev{ left:-8px; }
+  .vv-carousel-next{ right:-8px; }
+}
 .vv-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}
 .vv-lightbox.active{display:flex}
 .vv-lightbox img{max-width:90vw;max-height:90vh;object-fit:contain}
@@ -169,11 +235,35 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 .vv-lightbox-close:hover{opacity:1}
 @media(max-width:768px){.vv-posts-wrap{grid-template-columns:repeat(2,1fr)}.vv-stories-wrap{grid-template-columns:repeat(2,1fr)}}
 
-.vv-stories-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start;margin-bottom:40px}
-.vv-story-item{overflow:hidden;cursor:zoom-in;background:var(--gray-100);display:block;border-radius:12px}
-.vv-story-item img{width:100%;height:auto;display:block;transition:transform .5s var(--ease)}
-.vv-story-item:hover img{transform:scale(1.04)}
-@media(max-width:768px){.vv-stories-wrap{column-count:2}}
+/* stories carousel — taller 9:16 slots */
+.vv-stories-track{ height:520px; }
+.vv-story-item{
+  position:absolute;
+  border-radius:12px;
+  overflow:hidden;
+  cursor:pointer;
+  background:var(--gray-100);
+  will-change:transform,opacity,width,height;
+}
+.vv-story-item img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  pointer-events:none;
+}
+@media(max-width:768px){ .vv-stories-track{ height:360px; } }
+
+/* gif sticker carousel — square, wide, transparent bg */
+.vv-gifs-track{ height:220px; }
+.vv-gif-item{
+  position:absolute;
+  cursor:pointer;
+  background:transparent;
+  will-change:transform,opacity,width,height;
+}
+.vv-gif-item img{
+  width:100%;height:100%;object-fit:contain;display:block;
+  pointer-events:none;
+}
+@media(max-width:768px){ .vv-gifs-track{ height:160px; } }
 </style>
 </head>
 <body>
@@ -207,15 +297,15 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 <!-- STATS -->
 <div class="stats">
   <div class="stat reveal">
-    <div class="stat-n">40%</div>
+    <div class="stat-n" data-count="40" data-suffix="%">0%</div>
     <div class="stat-l">YoY increase in interactions &amp; views</div>
   </div>
   <div class="stat reveal">
-    <div class="stat-n">2M+</div>
+    <div class="stat-n" data-count="2" data-suffix="M+">0M+</div>
     <div class="stat-l">Total audience reached</div>
   </div>
   <div class="stat reveal">
-    <div class="stat-n">4</div>
+    <div class="stat-n" data-count="4" data-suffix="">0</div>
     <div class="stat-l">Ship launches covered</div>
   </div>
 </div>
@@ -239,58 +329,32 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
   <div class="vv-section" style="padding:56px;border-bottom:1px solid var(--gray-200)">
     <p class="feature-label" style="margin-bottom:12px;">Graphic Design</p>
     <p style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--black);margin-bottom:16px">In-Feed Posts <span style="font-weight:300;color:var(--gray-400)">— Facebook &middot; Instagram &middot; Pinterest &middot; Threads &middot; LinkedIn</span></p>
-    <div class="vv-posts-wrap">
-      <div class="vv-post-item">
-        <img src="images/vv infeed/01_sea ibiza.png" alt="Raise a Glass — Bar Tab" loading="lazy">
+    <div class="vv-carousel" id="vv-carousel">
+      <button class="vv-carousel-btn vv-carousel-prev" id="vv-prev" aria-label="Previous">&#8592;</button>
+      <button class="vv-carousel-btn vv-carousel-next" id="vv-next" aria-label="Next">&#8594;</button>
+
+      <div class="vv-carousel-track" id="vv-carousel-track">
+        <div class="vv-carousel-item" data-index="0"><img src="images/vv infeed/01_sea ibiza.png" alt="Sea Ibiza"></div>
+        <div class="vv-carousel-item" data-index="1"><img src="images/vv infeed/02_bar tab.png" alt="Bar Tab"></div>
+        <div class="vv-carousel-item" data-index="2"><img src="images/vv infeed/03_wlf oceans.png" alt="With Love for Our Oceans"></div>
+        <div class="vv-carousel-item" data-index="3"><img src="images/vv infeed/04_aruba.png" alt="Aruba"></div>
+        <div class="vv-carousel-item" data-index="4"><img src="images/vv infeed/05_santorini.png" alt="Santorini"></div>
+        <div class="vv-carousel-item" data-index="5"><img src="images/vv infeed/06_solo cruise.png" alt="Solo Cruise"></div>
+        <div class="vv-carousel-item" data-index="6"><img src="images/vv infeed/07_set it to silent.png" alt="Set It to Silent"></div>
+        <div class="vv-carousel-item" data-index="7"><img src="images/vv infeed/08_bl tour.png" alt="BL Tour"></div>
+        <div class="vv-carousel-item" data-index="8"><img src="images/vv infeed/09_boy george.png" alt="Boy George"></div>
+        <div class="vv-carousel-item" data-index="9"><img src="images/vv infeed/10_laptop monday.png" alt="Laptop Monday"></div>
+        <div class="vv-carousel-item" data-index="10"><img src="images/vv infeed/11_vacation.png" alt="Vacation"></div>
+        <div class="vv-carousel-item" data-index="11"><img src="images/vv infeed/12_mermaids intro.gif" alt="Mermaids Intro"></div>
+        <div class="vv-carousel-item" data-index="12"><img src="images/vv infeed/13_mermaids sl.gif" alt="Mermaids"></div>
+        <div class="vv-carousel-item" data-index="13"><img src="images/vv infeed/14_sea days intro.png" alt="Sea Days Intro"></div>
+        <div class="vv-carousel-item" data-index="14"><img src="images/vv infeed/15_sea days 1.gif" alt="Sea Days 1"></div>
+        <div class="vv-carousel-item" data-index="15"><img src="images/vv infeed/16_sea days 2.gif" alt="Sea Days 2"></div>
+        <div class="vv-carousel-item" data-index="16"><img src="images/vv infeed/17_sea days 3.gif" alt="Sea Days 3"></div>
       </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/02_bar tab.png" alt="How to Rock a Solo Cruise" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/03_wlf oceans.png" alt="Sea Ibiza" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/04_aruba.png" alt="With Love for Our Oceans" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/05_santorini.png" alt="Santorini Dinner" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/06_solo cruise.png" alt="Aruba Beach Day Guide" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/07_set it to silent.png" alt="Brilliant Lady North American Tour" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/08_bl tour.png" alt="Vacati_n" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/09_boy george.png" alt="Slams Laptop Shut" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/10_laptop monday.png" alt="Reality Called Silent" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/11_vacation.png" alt="Boy George Rock the Hammock" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/12_mermaids intro.gif" alt="Sea Days Are Boring" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/13_mermaids sl.gif" alt="Animated Post 1" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/14_sea days intro.png" alt="Animated Post 2" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/15_sea days 1.gif" alt="gif" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/16_sea days 2.gif" alt="gif" loading="lazy">
-      </div>
-      <div class="vv-post-item">
-        <img src="images/vv infeed/17_sea days 3.gif" alt="Sea Day Spa" loading="lazy">
-      </div>
+
+      <!-- dot indicators -->
+      <div class="vv-carousel-dots" id="vv-dots"></div>
     </div>
     
     
@@ -301,82 +365,38 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
   <div class="vv-section" style="padding:56px;border-bottom:1px solid var(--gray-200)">
     <p class="feature-label" style="margin-bottom:12px;">Stories</p>
     <p style="font-size:13px;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;margin-bottom:32px">Facebook &middot; Instagram</p>
-    <div class="vv-stories-wrap">
-      <div class="vv-story-item">
-        <img src="images/vv stories/01_Miami 305.png" alt="Virgin Voyages Stories" loading="lazy">
+
+    <div class="vv-carousel" id="vv-stories-carousel">
+      <button class="vv-carousel-btn vv-carousel-prev" id="vv-stories-prev" aria-label="Previous">&#8592;</button>
+      <button class="vv-carousel-btn vv-carousel-next" id="vv-stories-next" aria-label="Next">&#8594;</button>
+      <div class="vv-carousel-track vv-stories-track" id="vv-stories-track">
+        <div class="vv-story-item"><img src="images/vv stories/01_Miami 305.png" alt="Miami 305"></div>
+        <div class="vv-story-item"><img src="images/vv stories/02_Miami 305 Outro.png" alt="Miami 305 Outro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/03_WLF intro.png" alt="WLF Intro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/04_WLF outro.png" alt="WLF Outro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/05_seven seas intro.png" alt="Seven Seas Intro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/06_seven seas drink 1.png" alt="Seven Seas Drink 1"></div>
+        <div class="vv-story-item"><img src="images/vv stories/07_seven seas drink 2.png" alt="Seven Seas Drink 2"></div>
+        <div class="vv-story-item"><img src="images/vv stories/08_seven seas outro.png" alt="Seven Seas Outro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/09_athens to portsmouth.png" alt="Athens to Portsmouth"></div>
+        <div class="vv-story-item"><img src="images/vv stories/10_AUS animation.gif" alt="AUS Animation"></div>
+        <div class="vv-story-item"><img src="images/vv stories/11_word on the sea.png" alt="Word on the Sea"></div>
+        <div class="vv-story-item"><img src="images/vv stories/12_BL countdown.png" alt="BL Countdown"></div>
+        <div class="vv-story-item"><img src="images/vv stories/13_eat and drink.png" alt="Eat and Drink"></div>
+        <div class="vv-story-item"><img src="images/vv stories/14_Sailor Reviews_COVER_3.gif" alt="Sailor Reviews Cover"></div>
+        <div class="vv-story-item"><img src="images/vv stories/15_Sailor Reviews_4.gif" alt="Sailor Reviews 4"></div>
+        <div class="vv-story-item"><img src="images/vv stories/16_Sailor Reviews_2.gif" alt="Sailor Reviews 2"></div>
+        <div class="vv-story-item"><img src="images/vv stories/17_Pi or Lie Intro.png" alt="Pi or Lie Intro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/18_Pi or Lie Question.png" alt="Pi or Lie Question"></div>
+        <div class="vv-story-item"><img src="images/vv stories/19_Pi or Lie Answer.png" alt="Pi or Lie Answer"></div>
+        <div class="vv-story-item"><img src="images/vv stories/20_BL LA Playlist.png" alt="BL LA Playlist"></div>
+        <div class="vv-story-item"><img src="images/vv stories/21_Marv Voayges Intro.png" alt="Marv Voyages Intro"></div>
+        <div class="vv-story-item"><img src="images/vv stories/22_Marv Voyages 1.png" alt="Marv Voyages 1"></div>
+        <div class="vv-story-item"><img src="images/vv stories/23_Marv Voyages 2.png" alt="Marv Voyages 2"></div>
+        <div class="vv-story-item"><img src="images/vv stories/24_Marv Voyages 3.png" alt="Marv Voyages 3"></div>
+        <div class="vv-story-item"><img src="images/vv stories/25_Marv Voyages Outro.png" alt="Marv Voyages Outro"></div>
       </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/02_Miami 305 Outro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/03_WLF intro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/04_WLF outro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/05_seven seas intro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/06_seven seas drink 1.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/07_seven seas drink 2.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/08_seven seas outro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/09_athens to portsmouth.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/10_AUS animation.gif" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/11_word on the sea.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/12_BL countdown.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/13_eat and drink.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/14_Sailor Reviews_COVER_3.gif" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/15_Sailor Reviews_4.gif" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/16_Sailor Reviews_2.gif" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/17_Pi or Lie Intro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/18_Pi or Lie Question.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/19_Pi or Lie Answer.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/20_BL LA Playlist.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/21_Marv Voayges Intro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/22_Marv Voyages 1.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/23_Marv Voyages 2.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/24_Marv Voyages 3.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
-      <div class="vv-story-item">
-        <img src="images/vv stories/25_Marv Voyages Outro.png" alt="Virgin Voyages Stories" loading="lazy">
-      </div>
+      <div class="vv-carousel-dots" id="vv-stories-dots"></div>
     </div>
   </div>
 
@@ -413,21 +433,26 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
     <p style="font-size:13px;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Stories</p>
     <p style="font-size:15px;font-weight:300;color:var(--gray-600);line-height:1.8;max-width:760px;margin-bottom:8px;">For major launches, events, and holidays, I design playful, on-brand sticker sets featured in stories and shared on GIPHY for our audience to use across social.</p>
     <a href="https://giphy.com/virginvoyages" target="_blank" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--accent);text-decoration:none;margin-bottom:32px">See them all on GIPHY ↗</a>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:32px">
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/01_BL NYC_NYC LOCK UP_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/02_BL NYC_BRILLIANT_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/03_BL MIA Flamingo_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/04_BL MIA No Kids_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/05_AUS_GDay_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/06_AUS_Kangaroo Sign_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/07_AUS_NWV_Stamp_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/08_Opa Ahoy Sticker_2.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/09_RL_Mermaid_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/10_Sea You In Greece Sticker_2_White.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/11_Scarlet Fright Night_Sticker_2.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/12_Witch Hat_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/13_Holidays_Ornament_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
-      <div style="aspect-ratio:1/1;background:transparent;overflow:hidden"><img src="images/vv gifs/14_Holidays_Stamp_Sticker_1.gif" alt="VV Sticker" style="width:100%;height:100%;object-fit:contain"></div>
+    <div class="vv-carousel" id="vv-gifs-carousel">
+      <button class="vv-carousel-btn vv-carousel-prev" id="vv-gifs-prev" aria-label="Previous">&#8592;</button>
+      <button class="vv-carousel-btn vv-carousel-next" id="vv-gifs-next" aria-label="Next">&#8594;</button>
+      <div class="vv-carousel-track vv-gifs-track" id="vv-gifs-track">
+        <div class="vv-gif-item"><img src="images/vv gifs/01_BL NYC_NYC LOCK UP_Sticker_1.gif" alt="BL NYC Lock Up"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/02_BL NYC_BRILLIANT_Sticker_1.gif" alt="Brilliant"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/03_BL MIA Flamingo_Sticker_1.gif" alt="BL MIA Flamingo"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/04_BL MIA No Kids_Sticker_1.gif" alt="No Kids"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/05_AUS_GDay_Sticker_1.gif" alt="G'Day"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/06_AUS_Kangaroo Sign_Sticker_1.gif" alt="Kangaroo Sign"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/07_AUS_NWV_Stamp_Sticker_1.gif" alt="NWV Stamp"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/08_Opa Ahoy Sticker_2.gif" alt="Opa Ahoy"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/09_RL_Mermaid_1.gif" alt="Mermaid"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/10_Sea You In Greece Sticker_2_White.gif" alt="Sea You In Greece"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/11_Scarlet Fright Night_Sticker_2.gif" alt="Scarlet Fright Night"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/12_Witch Hat_Sticker_1.gif" alt="Witch Hat"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/13_Holidays_Ornament_Sticker_1.gif" alt="Holidays Ornament"></div>
+        <div class="vv-gif-item"><img src="images/vv gifs/14_Holidays_Stamp_Sticker_1.gif" alt="Holidays Stamp"></div>
+      </div>
+      <div class="vv-carousel-dots" id="vv-gifs-dots"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div style="aspect-ratio:9/16;background:var(--gray-900);border-radius:12px;overflow:hidden"><video width="100%" height="100%" controls playsinline style="display:block;object-fit:cover"><source src="images/vv gifs/BL LA Stickers_Promo_3.mp4" type="video/mp4"></video></div>
@@ -471,8 +496,38 @@ footer{border-top:1px solid var(--gray-200);padding:40px 48px;display:flex;justi
 </footer>
 
 <script>
+// Scroll reveal
 const obs=new IntersectionObserver(entries=>{entries.forEach((e,i)=>{if(e.isIntersecting)setTimeout(()=>e.target.classList.add('visible'),i*80)});},{threshold:0.06});
 document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// Count-up animation for stats
+function animateCount(el) {
+  const target = parseInt(el.dataset.count, 10);
+  const suffix = el.dataset.suffix || '';
+  const duration = 1400;
+  const startTime = performance.now();
+  function ease(t) { return 1 - Math.pow(1 - t, 3); }
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = Math.round(ease(progress) * target);
+    el.textContent = current + suffix;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+const statObs = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const countEl = entry.target.querySelector('[data-count]');
+      if (countEl) animateCount(countEl);
+      statObs.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.stat').forEach(el => statObs.observe(el));
 </script>
 
 
@@ -491,6 +546,174 @@ document.querySelectorAll('.vv-post-item, .vv-story-item').forEach(item => {
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') document.getElementById('vv-lightbox').classList.remove('active');
+});
+</script>
+<script>
+// ── Reusable focus carousel factory ───────────────────────────────
+function makeCarousel(opts) {
+  const { itemSelector, trackId, prevId, nextId, dotsId, slots, speed } = opts;
+
+  const items  = Array.from(document.querySelectorAll(itemSelector));
+  const dotsEl = document.getElementById(dotsId);
+  const track  = document.getElementById(trackId);
+  const total  = items.length;
+
+  let pos=0, target=0, paused=false, lastT=null;
+  const EASE=0.10, DRAG_SCALE=1/260;
+  let dragging=false, dragStartX=0, dragStartPos=0, dragVel=0, lastDragX=0, didDrag=false;
+
+  // dots
+  items.forEach((_,i) => {
+    const d = document.createElement('button');
+    d.className = 'vv-carousel-dot';
+    d.setAttribute('aria-label','Go to slide '+(i+1));
+    d.addEventListener('click', () => { pause(); snapTo(i); });
+    dotsEl.appendChild(d);
+  });
+
+  function updateDots() {
+    const idx = ((Math.round(pos)%total)+total)%total;
+    dotsEl.querySelectorAll('.vv-carousel-dot').forEach((d,i) => d.classList.toggle('active', i===idx));
+  }
+
+  function lerp(a,b,t){ return a+(b-a)*t; }
+
+  function slotFor(offset) {
+    if (Math.abs(offset)>=2.5) return null;
+    const si=offset+2, lo=Math.floor(si), hi=Math.ceil(si);
+    if (lo===hi) return slots[lo];
+    const t=si-lo;
+    const A=slots[Math.max(0,Math.min(slots.length-1,lo))];
+    const B=slots[Math.max(0,Math.min(slots.length-1,hi))];
+    if (!A||!B) return null;
+    return {x:lerp(A.x,B.x,t),w:lerp(A.w,B.w,t),h:lerp(A.h,B.h,t),op:lerp(A.op,B.op,t),z:Math.round(lerp(A.z,B.z,t))};
+  }
+
+  function render() {
+    items.forEach((item,i) => {
+      let offset=i-pos;
+      while(offset>total/2) offset-=total;
+      while(offset<-total/2) offset+=total;
+      const slot=slotFor(offset);
+      if (!slot||Math.abs(offset)>2.6) {
+        item.style.opacity='0'; item.style.pointerEvents='none'; item.style.zIndex='0'; return;
+      }
+      item.style.opacity=slot.op; item.style.zIndex=slot.z;
+      item.style.width=slot.w+'px'; item.style.height=slot.h+'px';
+      item.style.transform=`translateX(${slot.x}px) translateY(-50%)`;
+      item.style.top='50%'; item.style.left='50%'; item.style.marginLeft=(-slot.w/2)+'px';
+      item.style.pointerEvents=Math.abs(offset)<2.5?'auto':'none';
+      item.style.cursor=Math.abs(offset)<0.3?'zoom-in':'pointer';
+      item.style.boxShadow=`0 ${lerp(0,24,Math.max(0,1-Math.abs(offset)))}px ${lerp(0,64,Math.max(0,1-Math.abs(offset)))}px rgba(0,0,0,${(lerp(0,0.18,Math.max(0,1-Math.abs(offset)))).toFixed(3)})`;
+    });
+    updateDots();
+  }
+
+  function tick(ts) {
+    if (lastT===null) lastT=ts;
+    const dt=Math.min((ts-lastT)/1000,0.1); lastT=ts;
+    if (!paused) { pos+=speed*dt; }
+    else { pos=lerp(pos,target,EASE); if(Math.abs(pos-target)<0.001) pos=target; }
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  function pause() { if(paused) return; paused=true; target=Math.round(pos); }
+
+  function snapTo(idx) {
+    let best=idx;
+    for (let k=-1;k<=1;k++) { const c=idx+k*total; if(Math.abs(c-pos)<Math.abs(best-pos)) best=c; }
+    target=best;
+  }
+
+  function step(dir) { pause(); target=Math.round(pos)+dir; }
+
+  document.getElementById(prevId).addEventListener('click', ()=>step(-1));
+  document.getElementById(nextId).addEventListener('click', ()=>step(+1));
+
+  items.forEach((item,i) => {
+    item.addEventListener('click', () => {
+      if (didDrag) return;
+      const centerIdx=((Math.round(pos)%total)+total)%total;
+      if (i===centerIdx) {
+        document.getElementById('vv-lightbox-img').src=item.querySelector('img').src;
+        document.getElementById('vv-lightbox').classList.add('active');
+      } else { pause(); snapTo(i); }
+    });
+  });
+
+  function onDragStart(x) {
+    dragging=true; didDrag=false; dragStartX=x; lastDragX=x;
+    dragStartPos=pos; dragVel=0; paused=true; track.style.cursor='grabbing';
+  }
+  function onDragMove(x) {
+    if (!dragging) return;
+    dragVel=-(x-lastDragX)*DRAG_SCALE; lastDragX=x;
+    if (Math.abs(x-dragStartX)>4) didDrag=true;
+    pos=dragStartPos-(x-dragStartX)*DRAG_SCALE;
+  }
+  function onDragEnd() {
+    if (!dragging) return;
+    dragging=false; track.style.cursor='';
+    target=Math.round(pos+dragVel*6);
+  }
+
+  track.addEventListener('mousedown',  e=>{e.preventDefault();onDragStart(e.clientX);});
+  window.addEventListener('mousemove', e=>{if(dragging)onDragMove(e.clientX);});
+  window.addEventListener('mouseup',   ()=>onDragEnd());
+  track.addEventListener('touchstart', e=>{onDragStart(e.touches[0].clientX);},{passive:true});
+  track.addEventListener('touchmove',  e=>{if(dragging)onDragMove(e.touches[0].clientX);},{passive:true});
+  track.addEventListener('touchend',   ()=>onDragEnd());
+
+  requestAnimationFrame(tick);
+  return { step, pause, snapTo };
+}
+
+// ── In-feed posts carousel ────────────────────────────────────────
+const postCarousel = makeCarousel({
+  itemSelector: '.vv-carousel-item',
+  trackId: 'vv-carousel-track', prevId: 'vv-prev', nextId: 'vv-next', dotsId: 'vv-dots',
+  speed: 0.4,
+  slots: [
+    { x:-480, w:160, h:220, op:0.30, z:1 },
+    { x:-280, w:220, h:300, op:0.60, z:2 },
+    { x:   0, w:300, h:400, op:1.00, z:4 },
+    { x: 280, w:220, h:300, op:0.60, z:3 },
+    { x: 480, w:160, h:220, op:0.30, z:2 },
+  ],
+});
+
+// ── Stories carousel (tall 9:16 slots) ───────────────────────────
+const storiesCarousel = makeCarousel({
+  itemSelector: '.vv-story-item',
+  trackId: 'vv-stories-track', prevId: 'vv-stories-prev', nextId: 'vv-stories-next', dotsId: 'vv-stories-dots',
+  speed: 0.35,
+  slots: [
+    { x:-420, w:130, h:230, op:0.25, z:1 },
+    { x:-240, w:180, h:320, op:0.55, z:2 },
+    { x:   0, w:260, h:460, op:1.00, z:4 },
+    { x: 240, w:180, h:320, op:0.55, z:3 },
+    { x: 420, w:130, h:230, op:0.25, z:2 },
+  ],
+});
+
+// ── GIF sticker carousel — 5 wide, square, transparent ───────────
+const gifCarousel = makeCarousel({
+  itemSelector: '.vv-gif-item',
+  trackId: 'vv-gifs-track', prevId: 'vv-gifs-prev', nextId: 'vv-gifs-next', dotsId: 'vv-gifs-dots',
+  speed: 0.3,
+  slots: [
+    { x:-480, w:140, h:140, op:0.25, z:1 },
+    { x:-260, w:170, h:170, op:0.55, z:2 },
+    { x:   0, w:200, h:200, op:1.00, z:4 },
+    { x: 260, w:170, h:170, op:0.55, z:3 },
+    { x: 480, w:140, h:140, op:0.25, z:2 },
+  ],
+});
+document.addEventListener('keydown', e => {
+  if (document.getElementById('vv-lightbox').classList.contains('active')) return;
+  if (e.key==='ArrowLeft')  { postCarousel.step(-1); storiesCarousel.step(-1); gifCarousel.step(-1); }
+  if (e.key==='ArrowRight') { postCarousel.step(+1); storiesCarousel.step(+1); gifCarousel.step(+1); }
 });
 </script>
 </body>
